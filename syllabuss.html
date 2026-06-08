@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#020208">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nexus">
+<title>Nexus — Study App</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#020208;--bg2:#0c0c18;--card:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.07);
+  --text:#f0f0ff;--muted:rgba(220,220,255,0.42);--safe-bottom:env(safe-area-inset-bottom,0px);
+  --nav-h:64px;--hdr-h:56px;
+}
+html,body{
+  height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  /* Fixed emoji rendering engine fallback natively */
+  font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  overscroll-behavior:none;
+}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:99px}
+
+canvas#nn{position:fixed;inset:0;pointer-events:none;z-index:0}
+.orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;opacity:.12;transition:background 1.2s}
+
+.shell{position:fixed;inset:0;display:flex;flex-direction:column;z-index:1}
+
+.topbar{
+  height:var(--hdr-h);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;padding-top:env(safe-area-inset-top,0px);
+  background:rgba(2,2,8,0.8);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);position:relative;z-index:10;
+}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.back-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--card);display:none;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:all .2s}
+.back-btn.show{display:flex}
+.back-btn:active{transform:scale(0.9)}
+.app-logo{font-size:18px;font-weight:900;letter-spacing:-0.5px;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.page-title{font-size:14px;font-weight:600;color:var(--text);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:all .2s}
+.icon-btn:active{transform:scale(0.9);background:rgba(255,255,255,0.07)}
+.icon-btn.active{color:#facc15;border-color:rgba(250,204,21,.3)}
+
+.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative}
+.page{display:none;padding-bottom:calc(var(--nav-h) + 16px + var(--safe-bottom));min-height:100%}
+.page.active{display:block;animation:fadeUp .25s ease both}
+
+.bottomnav{
+  height:calc(var(--nav-h) + var(--safe-bottom));flex-shrink:0;
+  display:flex;align-items:flex-start;padding-top:8px;padding-bottom:var(--safe-bottom);
+  background:rgba(2,2,8,0.92);backdrop-filter:blur(24px);
+  border-top:1px solid var(--border);position:relative;z-index:10;
+}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:4px 0;position:relative;transition:all .15s}
+.nav-item svg{color:var(--muted);transition:all .2s}
+.nav-item span{font-size:9.5px;font-weight:600;letter-spacing:.3px;color:var(--muted);text-transform:uppercase;transition:all .2s}
+.nav-item.active svg{color:var(--nc,#a78bfa)}
+.nav-item.active span{color:var(--nc,#a78bfa)}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:var(--nc,#a78bfa);position:absolute;bottom:-2px;opacity:0;transition:all .2s}
+.nav-item.active .nav-dot{opacity:1}
+.nav-item:active{transform:scale(0.9)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes shine{0%{background-position:0% center}100%{background-position:200% center}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes ripple{0%{transform:scale(0);opacity:.4}100%{transform:scale(4);opacity:0}}
+@keyframes popIn{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--pc,rgba(167,139,250,.3))}50%{box-shadow:0 0 0 8px transparent}}
+
+.searchbar{margin:12px 14px 4px;display:flex;gap:8px;animation:fadeUp .3s ease both}
+.searchbar-inner{flex:1;display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 14px;transition:border-color .2s}
+.searchbar-inner:focus-within{border-color:rgba(167,139,250,.4)}
+.searchbar-inner svg{color:var(--muted)}
+.searchbar-inner input{border:none;outline:none;background:transparent;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;width:100%}
+.searchbar-inner input::placeholder{color:var(--muted)}
+.filter-pill{width:42px;height:42px;border-radius:12px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:all .2s;flex-shrink:0}
+.filter-pill.on{background:rgba(250,204,21,.08);border-color:#facc15;color:#facc15}
+
+.onboard-overlay{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);backdrop-filter:blur(8px)}
+.onboard-card{background:var(--bg2);border:1px solid rgba(167,139,250,.2);border-radius:24px;padding:32px 24px;width:calc(100% - 48px);max-width:380px;text-align:center;animation:popIn .4s ease both}
+.onboard-logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#a78bfa,#60a5fa);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#fff;margin:0 auto 16px}
+.onboard-title{font-size:22px;font-weight:900;letter-spacing:-0.5px;background:linear-gradient(135deg,#a78bfa,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.onboard-sub{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6}
+.onboard-input{width:100%;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(167,139,250,.3);color:#fff;font-family:'Inter',sans-serif;font-size:16px;outline:none;text-align:center;font-weight:600;transition:border-color .2s;margin-bottom:16px}
+.onboard-input:focus{border-color:#a78bfa}
+.onboard-input::placeholder{color:var(--muted);font-weight:400}
+.onboard-btn{width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s}
+.onboard-btn:active{transform:scale(0.97)}
+.onboard-tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
+.onboard-tag{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border)}
+
+.home-hero{padding:20px 16px 8px;text-align:center;animation:fadeUp .4s ease both}
+.home-greeting{font-size:22px;font-weight:900;letter-spacing:-1px;background:linear-gradient(135deg,#fff 0%,#a78bfa 30%,#60a5fa 60%,#34d399 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shine 4s linear infinite}
+.home-sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+.streak-bar{margin:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px;animation:fadeUp .35s ease both}
+.streak-fire{font-size:28px;animation:float 2s ease infinite}
+.streak-info{flex:1}
+.streak-num{font-size:20px;font-weight:900;color:#fb923c;letter-spacing:-1px}
+.streak-label{font-size:11px;color:var(--muted);margin-top:1px}
+.streak-days{display:flex;gap:4px;margin-top:8px}
+.sday{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.sday.done{background:rgba(251,146,60,.15);color:#fb923c;border:1px solid rgba(251,146,60,.3)}
+.sday.today{background:rgba(251,146,60,.25);color:#fb923c;border:1px solid rgba(251,146,60,.5);position:relative}
+.sday.today::after{content:'';position:absolute;inset:-2px;border-radius:10px;border:1px solid rgba(251,146,60,.4);animation:pulse 2s infinite;--pc:rgba(251,146,60,.3)}
+.sday.miss{background:rgba(255,255,255,.03);color:var(--muted);border:1px solid var(--border)}
+
+.section-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;padding:12px 16px 6px}
+
+.mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px}
+.mcard{
+  border-radius:16px;border:1px solid var(--border);background:var(--card);
+  padding:16px;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .2s,border-color .2s;animation:popIn .4s ease both;
+}
+.mcard:active{transform:scale(0.97)}
+.mcard.full{grid-column:span 2}
+.mcard::before{content:'';position:absolute;inset:0;background:var(--grd);opacity:0;transition:opacity .3s}
+.mcard:hover::before,.mcard.active::before{opacity:.07}
+.mcard.active{border-color:var(--clr);--pc:var(--clr);animation:pulse 3s infinite}
+.mc-icon{font-size:26px;margin-bottom:10px;display:block;transition:transform .3s;line-height:1}
+.mcard:active .mc-icon{transform:scale(1.1)}
+.mc-name{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.2px}
+.mc-meta{font-size:10.5px;color:var(--muted);margin-top:2px}
+.mc-bar{height:2px;background:rgba(255,255,255,.04);border-radius:99px;margin-top:10px;overflow:hidden}
+.mc-fill{height:100%;background:var(--clr);width:0;transition:width 1s cubic-bezier(.16,1,.3,1)}
+.ripple-el{position:absolute;border-radius:50%;pointer-events:none;animation:ripple .6s ease-out forwards}
+
+.quick-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 14px;margin-top:4px}
+.qstat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 8px;text-align:center;animation:popIn .4s ease both}
+.qstat-n{font-size:20px;font-weight:900;letter-spacing:-1px}
+.qstat-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+.recent-section{padding:4px 14px 0}
+.recent-item{display:flex;align-items:center;gap:12px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;cursor:pointer;transition:all .18s;animation:fadeUp .3s ease both}
+.recent-item:active{transform:scale(0.98);background:rgba(255,255,255,.05)}
+.ri-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.ri-name{font-size:13px;font-weight:600;color:#fff}
+.ri-meta{font-size:10.5px;color:var(--muted);margin-top:2px}
+.ri-chev{margin-left:auto;color:var(--muted);display:flex;align-items:center}
+
+.subj-chips{display:flex;gap:8px;padding:10px 14px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.subj-chips::-webkit-scrollbar{display:none}
+.chip{display:flex;align-items:center;gap:6px;white-space:nowrap;padding:8px 14px;border-radius:99px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;flex-shrink:0}
+.chip:active{transform:scale(0.96)}
+.chip.active{color:#fff;border-color:var(--clr);background:rgba(255,255,255,.05)}
+.chip-dot{width:5px;height:5px;border-radius:50%;background:var(--clr);display:none}
+.chip.active .chip-dot{display:block}
+
+.unit-stack{padding:8px 14px 0;display:flex;flex-direction:column;gap:8px}
+.ucard{border-radius:14px;border:1px solid var(--border);background:var(--card);open:hidden;transition:border-color .2s}
+.ucard.open{border-color:var(--clr)}
+.uhead{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none}
+.unum{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:var(--clr);color:#fff;flex-shrink:0;transition:border-radius .25s}
+.ucard.open .unum{border-radius:50%}
+.utitle{flex:1;font-size:13px;font-weight:600;color:#fff}
+.uchev{color:var(--muted);transition:transform .3s,color .2s;display:flex;align-items:center}
+.ucard.open .uchev{transform:rotate(180deg);color:var(--clr)}
+.ubody{max-height:0;open:hidden;transition:max-height .45s cubic-bezier(.16,1,.3,1)}
+.ucard.open .ubody{max-height:4000px;border-top:1px solid var(--border)}
+.chlist{padding:4px 12px 12px}
+
+.chitem{padding:11px 0;border-bottom:1px solid rgba(255,255,255,.03);display:flex;flex-direction:column;gap:0}
+.chitem:last-child{border-bottom:none}
+.ch-row{display:flex;align-items:flex-start;gap:10px}
+.chico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--clr);flex-shrink:0;transition:background .2s,color .2s}
+.chitem:active .chico{background:var(--clr);color:#fff}
+.chname{font-size:13px;font-weight:600;color:#fff;margin-bottom:3px}
+.chtopics{font-size:11.5px;color:var(--muted);line-height:1.6}
+.ch-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.tag{font-size:8.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:99px;background:rgba(255,255,255,.04);color:#999}
+.imp-tag{background:rgba(239,68,68,.08);color:#f87171;border:1px solid rgba(239,68,68,.15)}
+.ch-btns{display:flex;gap:5px;margin-left:auto;flex-shrink:0}
+.cbtn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.01);display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s}
+.cbtn:active{transform:scale(0.9)}
+.cbtn.son{color:#facc15!important;border-color:rgba(250,204,21,.3);background:rgba(250,204,21,.04)}
+.cbtn.non{color:#60a5fa!important;border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.04)}
+.res-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.04)}
+.rbtn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:10px;text-decoration:none;font-size:11.5px;font-weight:700;transition:all .2s;letter-spacing:.2px}
+.rbtn.yt{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);color:#f87171}
+.rbtn.yt:active{background:rgba(239,68,68,.16)}
+.rbtn.web{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);color:#60a5fa}
+.rbtn.web:active{background:rgba(59,130,246,.16)}
+
+.flat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 14px 0}
+@media(max-width:360px){.flat-grid{grid-template-columns:1fr}}
+.tile{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;transition:all .2s;position:relative}
+.tile:active{transform:scale(0.97);border-color:var(--clr)}
+.tile-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--clr);transition:background .2s,color .2s}
+.tile:active .tile-ico{background:var(--clr);color:#fff}
+.tile-text{font-size:12px;font-weight:500;color:#fff;line-height:1.45;padding-right:42px}
+.tile-tags{display:flex;gap:3px;flex-wrap:wrap}
+.tile-tr{position:absolute;top:12px;right:12px;display:flex;gap:4px}
+.tile-res{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding-top:8px;border-top:1px solid rgba(255,255,255,.04);margin-top:auto}
+
+.notes-list{padding:8px 14px 0;display:flex;flex-direction:column;gap:8px}
+.note-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;animation:fadeUp .3s ease both;position:relative;overflow:hidden}
+.note-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--nc,#a78bfa);border-radius:3px 0 0 3px}
+.note-subject{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--nc,#a78bfa);margin-bottom:4px}
+.note-chapter{font-size:13px;font-weight:600;color:#fff;margin-bottom:6px}
+.note-content{font-size:12px;color:var(--muted);line-height:1.6;white-space:pre-wrap}
+.note-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.note-time{font-size:10px;color:var(--muted)}
+.note-del{width:28px;height:28px;border-radius:8px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.05);color:#f87171;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.note-del:active{transform:scale(0.9);background:rgba(239,68,68,.15)}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-state .es-icon{font-size:48px;display:block;margin-bottom:12px;opacity:.5;animation:float 3s ease infinite}
+.empty-state p{font-size:14px;font-weight:500;color:rgba(255,255,255,.2)}
+
+.bm-grid{padding:8px 14px 0;display:flex;flex-direction:column;gap:8px}
+.bm-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;transition:all .2s;animation:fadeUp .3s ease both}
+.bm-card:active{transform:scale(0.98);border-color:var(--clr)}
+.bm-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.bm-name{font-size:13px;font-weight:600;color:#fff}
+.bm-subject{font-size:10.5px;color:var(--muted);margin-top:2px}
+.bm-remove{margin-left:auto;width:28px;height:28px;border-radius:8px;border:1px solid rgba(250,204,21,.2);background:rgba(250,204,21,.04);color:#facc15;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s}
+.bm-remove:active{transform:scale(0.9)}
+
+.profile-hero{padding:24px 16px 12px;text-align:center;animation:fadeUp .4s ease both}
+.avatar{width:72px;height:72px;border-radius:50%;margin:0 auto 10px;background:linear-gradient(135deg,#a78bfa,#60a5fa);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;position:relative;animation:pulse 3s infinite;--pc:rgba(167,139,250,.3)}
+.uname{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.uprog{font-size:11.5px;color:var(--muted);margin-top:3px}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 14px;margin-bottom:4px}
+.pstat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 8px;text-align:center}
+.pstat-n{font-size:20px;font-weight:900;letter-spacing:-1px;color:#a78bfa}
+.pstat-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+
+.settings-group{padding:4px 14px;margin-bottom:2px}
+.settings-label{font-size:10.5px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;padding:10px 0 6px}
+.setting-row{display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:7px;cursor:pointer;transition:all .2s}
+.setting-row:active{transform:scale(0.98);background:rgba(255,255,255,.05)}
+.setting-ico{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.setting-info{flex:1}
+.setting-name{font-size:13px;font-weight:600;color:#fff}
+.setting-desc{font-size:11px;color:var(--muted);margin-top:1px}
+.setting-right{margin-left:auto;font-size:16px;color:var(--muted)}
+.toggle{width:44px;height:26px;border-radius:99px;background:var(--border);position:relative;cursor:pointer;transition:background .25s;flex-shrink:0}
+.toggle.on{background:#a78bfa}
+.toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .25s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.toggle.on::after{transform:translateX(18px)}
+
+.prog-hero{padding:16px 14px 8px;animation:fadeUp .4s ease both}
+.prog-title{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:4px}
+.prog-sub{font-size:12px;color:var(--muted)}
+.prog-cards{padding:0 14px;display:flex;flex-direction:column;gap:10px}
+.prog-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;animation:fadeUp .35s ease both}
+.prog-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.prog-card-ico{font-size:20px}
+.prog-card-name{font-size:13px;font-weight:600;color:#fff;flex:1}
+.prog-pct{font-size:13px;font-weight:700;color:var(--clr)}
+.prog-track{height:6px;background:rgba(255,255,255,.05);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;background:var(--grd,var(--clr));transition:width 1.2s cubic-bezier(.16,1,.3,1)}
+.prog-chapters{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.prog-ch{font-size:9.5px;padding:3px 8px;border-radius:99px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;transition:all .15s}
+.prog-ch.done{background:rgba(167,139,250,.12);border-color:var(--clr);color:var(--clr)}
+.prog-ch:active{transform:scale(0.95)}
+
+.modal-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:flex-end;animation:fadeUp .2s ease both}
+.modal-overlay.show{display:flex}
+.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+.modal-sheet{position:relative;width:100%;background:var(--bg2);border-radius:20px 20px 0 0;border-top:1px solid var(--border);padding:16px;padding-bottom:calc(16px + var(--safe-bottom));animation:slideUp .3s cubic-bezier(.16,1,.3,1);max-height:80vh;overflow-y:auto}
+.modal-handle{width:40px;height:4px;border-radius:99px;background:var(--border);margin:0 auto 16px}
+.modal-title{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+.modal-textarea{width:100%;min-height:120px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--border);padding:12px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;resize:none;outline:none;line-height:1.6;transition:border-color .2s}
+.modal-textarea:focus{border-color:rgba(167,139,250,.4)}
+.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.mbtn-cancel{padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.mbtn-save{padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+.mbtn-cancel:active,.mbtn-save:active{transform:scale(0.97)}
+
+.toast{position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 12px);left:50%;transform:translateX(-50%) translateY(10px);background:rgba(30,30,50,.95);border:1px solid var(--border);border-radius:12px;padding:10px 18px;font-size:13px;font-weight:500;color:#fff;z-index:200;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.page-banner{margin:8px 14px 4px;border-radius:16px;padding:14px 16px;border:1px solid var(--bc,rgba(255,255,255,.05));background:rgba(255,255,255,.01);display:flex;align-items:center;gap:14px;position:relative;overflow:hidden}
+.page-banner::after{content:'';position:absolute;top:-50%;right:-10%;width:180px;height:180px;background:radial-gradient(circle,var(--clr,#a78bfa) 0%,transparent 70%);opacity:.1;pointer-events:none}
+.pb-ico{font-size:36px;animation:float 3s ease infinite;flex-shrink:0;z-index:1}
+.pb-name{font-size:16px;font-weight:800;color:#fff;z-index:1}
+.pb-desc{font-size:11px;color:var(--muted);margin-top:2px;z-index:1}
+.pb-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;z-index:1}
+.pb-tag{font-size:8.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.05);color:var(--muted)}
+
+.mode-selector{display:flex;gap:6px;padding:8px 14px;overflow-x:auto;scrollbar-width:none}
+.mode-selector::-webkit-scrollbar{display:none}
+.mpill{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:99px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .2s}
+.mpill:active{transform:scale(0.95)}
+.mpill.active{color:#fff;border-color:var(--clr,#a78bfa);background:rgba(167,139,250,.08)}
+</style>
+</head>
+<body>
+
+<canvas id="nn"></canvas>
+<div class="orb" id="oA" style="width:300px;height:300px;top:-80px;left:-60px;background:#7f77dd"></div>
+<div class="orb" id="oB" style="width:260px;height:260px;bottom:80px;right:-50px;background:#3b82f6"></div>
+
+<div class="onboard-overlay" id="onboardOverlay">
+  <div class="onboard-card">
+    <div class="onboard-logo">N</div>
+    <div class="onboard-title">Welcome to Nexus ✨</div>
+    <div class="onboard-sub">Your all-in-one study companion for BCA, SSC GD & SBI PO. What should we call you?</div>
+    <div class="onboard-tags">
+      <span class="onboard-tag">📚 BCA Matrix</span>
+      <span class="onboard-tag">🛡️ SSC GD 2026</span>
+      <span class="onboard-tag">🏦 SBI PO 2026</span>
+    </div>
+    <input class="onboard-input" id="nameInput" type="text" placeholder="Enter your name..." maxlength="20" autocomplete="off">
+    <button class="onboard-btn" onclick="saveOnboard()">Let's Go 🚀</button>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="back-btn" id="backBtn" onclick="goBack()"></div>
+      <div class="app-logo" id="topLogo" style="display:flex;align-items:center;gap:7px">
+        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#a78bfa,#60a5fa);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;-webkit-text-fill-color:#fff;flex-shrink:0">N</div>
+        <span>Nexus</span>
+      </div>
+      <div class="page-title" id="topTitle" style="display:none"></div>
+    </div>
+    <div class="topbar-right">
+      <div class="icon-btn" id="searchBtn" onclick="focusSearch()"></div>
+      <div class="icon-btn" id="starFilterBtn" onclick="toggleStarFilter()"></div>
+    </div>
+  </div>
+
+  <div class="main" id="mainScroll">
+
+    <div class="page active" id="page-home">
+      <div class="home-hero">
+        <div class="home-greeting" id="greeting">Good Morning! 👋</div>
+        <div class="home-sub" id="homeSub">Keep grinding — you got this!</div>
+      </div>
+      <div class="streak-bar">
+        <div class="streak-fire">🔥</div>
+        <div style="flex:1">
+          <div class="streak-num" id="streakNum">0</div>
+          <div class="streak-label">Day Study Streak</div>
+          <div class="streak-days" id="streakDays"></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:900;color:#a78bfa" id="bmCount">0</div>
+          <div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Saved</div>
+        </div>
+      </div>
+      <div class="section-label">📚 Choose Mode</div>
+      <div class="mode-cards" id="homeModeCards"></div>
+      <div class="section-label">📊 Quick Stats</div>
+      <div class="quick-stats" id="homeStats"></div>
+      <div class="section-label">🕐 Recently Viewed</div>
+      <div class="recent-section" id="recentSection"></div>
+      <div style="text-align:center;padding:28px 16px 8px;animation:fadeUp .5s ease both">
+        <div style="display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.06);border-radius:99px;padding:8px 18px;background:rgba(255,255,255,0.02);backdrop-filter:blur(10px)">
+          <div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#a78bfa,#60a5fa);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;-webkit-text-fill-color:#fff;flex-shrink:0">S</div>
+          <span style="font-size:11px;font-weight:600;letter-spacing:0.3px;background:linear-gradient(135deg,#a78bfa,#60a5fa,#34d399);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Made by Shad</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.2)">· Nexus v2.0</span>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.15);margin-top:8px;letter-spacing:0.3px">BCA · SSC GD · SBI PO — All in One</div>
+      </div>
+    </div>
+
+    <div class="page" id="page-syllabus">
+      <div class="searchbar">
+        <div class="searchbar-inner" id="searchInnerBox"></div>
+        <div class="filter-pill" id="pillStarBtn" onclick="toggleStarFilter()"></div>
+      </div>
+      <div class="mode-selector" id="modeSelector"></div>
+      <div id="syllContent"></div>
+    </div>
+
+    <div class="page" id="page-notes">
+      <div class="searchbar">
+        <div class="searchbar-inner" id="notesSearchInnerBox"></div>
+      </div>
+      <div class="notes-list" id="notesList"></div>
+    </div>
+
+    <div class="page" id="page-bookmarks">
+      <div class="bm-grid" id="bmGrid"></div>
+    </div>
+
+    <div class="page" id="page-progress">
+      <div class="prog-hero">
+        <div class="prog-title">📈 Your Progress</div>
+        <div class="prog-sub">Track topics across all exams</div>
+      </div>
+      <div class="prog-cards" id="progCards"></div>
+    </div>
+
+    <div class="page" id="page-profile">
+      <div class="profile-hero">
+        <div class="avatar" id="profileAvatar">S</div>
+        <div class="uname" id="profileName">Student</div>
+        <div class="uprog" id="profileProgress">Loading...</div>
+      </div>
+      <div class="profile-stats" id="profileStats"></div>
+      <div class="settings-group">
+        <div class="settings-label">✏️ Your Name</div>
+        <div class="setting-row" onclick="promptRename()">
+          <div class="setting-ico" style="background:rgba(167,139,250,.1)">✏️</div>
+          <div class="setting-info"><div class="setting-name">Change Name</div><div class="setting-desc">Update your display name</div></div>
+          <span class="setting-right">›</span>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-label">Exam Shortcuts</div>
+        <div class="setting-row" onclick="setMode('bca');goToPage('syllabus')">
+          <div class="setting-ico" style="background:rgba(167,139,250,.1)">🎓</div>
+          <div class="setting-info"><div class="setting-name">BCA Matrix</div><div class="setting-desc">4 subjects · University syllabus</div></div>
+          <span class="setting-right">›</span>
+        </div>
+        <div class="setting-row" onclick="setMode('govt');goToPage('syllabus')">
+          <div class="setting-ico" style="background:rgba(251,146,60,.1)">🛡️</div>
+          <div class="setting-info"><div class="setting-name">SSC GD 2026</div><div class="setting-desc">5 sections · Government exam</div></div>
+          <span class="setting-right">›</span>
+        </div>
+        <div class="setting-row" onclick="setMode('sbipo');goToPage('syllabus')">
+          <div class="setting-ico" style="background:rgba(96,165,250,.1)">🏦</div>
+          <div class="setting-info"><div class="setting-name">SBI PO 2026</div><div class="setting-desc">7 papers · Banking exam</div></div>
+          <span class="setting-right">›</span>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-label">App Settings</div>
+        <div class="setting-row">
+          <div class="setting-ico" style="background:rgba(52,211,153,.1)">⚗️</div>
+          <div class="setting-info"><div class="setting-name">Study Reminders</div><div class="setting-desc">Daily notification at 8 AM</div></div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-ico" style="background:rgba(244,114,182,.1)">🔥</div>
+          <div class="setting-info"><div class="setting-name">Streak Protection</div><div class="setting-desc">Remind if streak at risk</div></div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="setting-row" onclick="clearData()">
+          <div class="setting-ico" style="background:rgba(239,68,68,.1)">🗑️</div>
+          <div class="setting-info"><div class="setting-name">Clear All Data</div><div class="setting-desc">Reset bookmarks, notes & progress</div></div>
+          <span class="setting-right">›</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottomnav" id="bottomNavPanel"></div>
+</div>
+
+<div class="modal-overlay" id="noteModal">
+  <div class="modal-backdrop" onclick="closeNoteModal()"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">Add Note</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <textarea class="modal-textarea" id="modalTA" placeholder="Write formulas, tricks, important points..."></textarea>
+    <div class="modal-actions">
+      <button class="mbtn-cancel" onclick="closeNoteModal()">Cancel</button>
+      <button class="mbtn-save" onclick="saveModalNote()">Save Note ✓</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  100% OFFLINE HIGH-RES VECTOR SVG SYSTEM
+// ══════════════════════════════════════════
+const SVGS = {
+  arrowLeft: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
+  search: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
+  star: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
+  starFilled: `<svg width="16" height="16" viewBox="0 0 24 24" fill="#facc15" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
+  home: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`,
+  books: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5z"></path></svg>`,
+  notebook: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+  chart: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
+  user: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
+  chevronRight: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`,
+  chevronDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+  trash: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
+  check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+  youtube: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>`,
+  x: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
+};
+
+const DB = {
+  bca:{
+    maths:{name:'Mathematics',emoji:'📐',clr:'#a78bfa',grd:'linear-gradient(135deg,#a78bfa,#7c3aed)',desc:'Sets · Logic · Matrices · Stats · Correlation',tags:['Algebra','Logic','Statistics'],
+      units:[
+        {name:'Sets, Relations & Functions',chapters:[
+          {id:'bca_m_u1_c1',emoji:'⭕',name:'Sets',tags:['Core'],imp:true,topics:'Definition, types, operations, subsets, power set, universal set, complement, union, intersection, Venn diagrams, inclusion-exclusion principle.'},
+          {id:'bca_m_u1_c2',emoji:'🔗',name:'Relations',tags:['Core'],imp:false,topics:'Cartesian product, types of relations — reflexive, symmetric, antisymmetric, transitive, equivalence relations.'},
+          {id:'bca_m_u1_c3',emoji:'📈',name:'Functions',tags:['Important'],imp:true,topics:'Domain & range, one-to-one, onto, bijective, composite and inverse functions.'}
+        ]},
+        {name:'Logic, Matrices & Determinants',chapters:[
+          {id:'bca_m_u2_c1',emoji:'🧩',name:'Logic and Proofs',tags:['Core'],imp:true,topics:"Proposition, conjunction, disjunction, negation, compound propositions, De Morgan's laws, tautology & contradiction."},
+          {id:'bca_m_u2_c2',emoji:'🔢',name:'Matrices',tags:['Calculation'],imp:true,topics:'Types, addition, subtraction, multiplication, scalar multiplication, transpose.'},
+          {id:'bca_m_u2_c3',emoji:'📊',name:'Determinants',tags:['Calculation'],imp:true,topics:"Up to 3×3, properties, minors, cofactors, expansion, area of triangle, adjoint, inverse, Cramer's rule."}
+        ]},
+        {name:'Statistics',chapters:[
+          {id:'bca_m_u3_c1',emoji:'📉',name:'Data & Frequency',tags:['Data'],imp:false,topics:'Collection methods, classification, frequency distribution, graphical representation.'},
+          {id:'bca_m_u3_c2',emoji:'📏',name:'Central Tendency & Dispersion',tags:['Important'],imp:true,topics:'Mean, median, mode; mean deviation, standard deviation, variance, coefficient of variation.'}
+        ]},
+        {name:'Correlation & Regression',chapters:[
+          {id:'bca_m_u4_c1',emoji:'🔭',name:'Correlation Analysis',tags:['Core'],imp:true,topics:"Types of correlation, Karl Pearson's coefficient, Spearman's rank correlation."},
+          {id:'bca_m_u4_c2',emoji:'📡',name:'Regression Analysis',tags:['Core'],imp:true,topics:'Regression vs correlation, regression line equations, properties, prediction using regression.'}
+        ]}
+      ]
+    },
+    cloud:{name:'Cloud Computing',emoji:'☁️',clr:'#60a5fa',grd:'linear-gradient(135deg,#60a5fa,#2563eb)',desc:'Architecture · Virtualization · AWS · GCP',tags:['IaaS','PaaS','SaaS'],
+      units:[
+        {name:'Introduction & Applications',chapters:[
+          {id:'bca_c_u1_c1',emoji:'🖥️',name:'Intro to Cloud Computing',tags:['Core'],imp:true,topics:'Definition, historical developments, enabling technology, essential characteristics, components, migration challenges.'},
+          {id:'bca_c_u1_c2',emoji:'📱',name:'Cloud Applications',tags:['Awareness'],imp:false,topics:'Healthcare, CRM & ERP, social networking, media, multiplayer gaming.'},
+          {id:'bca_c_u1_c3',emoji:'⭐',name:'Benefits of Cloud',tags:['Awareness'],imp:false,topics:'Benefits for market, enterprise, end-users and individuals.'}
+        ]},
+        {name:'Architecture & Service Models',chapters:[
+          {id:'bca_c_u2_c1',emoji:'🏗️',name:'Cloud Architecture',tags:['Core','Important'],imp:true,topics:'Cloud reference model, IaaS, PaaS, SaaS, public/private/hybrid/community clouds, scalability, MapReduce, SOA.'}
+        ]},
+        {name:'Virtualization & Security',chapters:[
+          {id:'bca_c_u3_c1',emoji:'💻',name:'Virtualization',tags:['Core'],imp:true,topics:'CPU, memory, I/O, server, desktop, network & datacenter virtualization. VMware, Hyper-V, KVM, Xen.'},
+          {id:'bca_c_u3_c2',emoji:'🔐',name:'Cloud Security',tags:['Important'],imp:true,topics:'Design principles, security challenges & architecture, SLA, risk mitigation, threat identification.'}
+        ]},
+        {name:'Cloud Platforms in Industry',chapters:[
+          {id:'bca_c_u4_c1',emoji:'🚀',name:'Amazon Web Services',tags:['Practical'],imp:true,topics:'Compute (EC2, Lambda), storage (S3, EBS), networking, database (RDS, DynamoDB), additional AWS services.'},
+          {id:'bca_c_u4_c2',emoji:'🔍',name:'Google App Engine',tags:['Practical'],imp:false,topics:'Architecture, core concepts, application lifecycle, cost model, GCP services overview.'}
+        ]}
+      ]
+    },
+    dotnet:{name:'.NET with C#',emoji:'🪟',clr:'#34d399',grd:'linear-gradient(135deg,#34d399,#059669)',desc:'CLR · Windows Forms · ADO.NET · ASP.NET · WCF',tags:['C#','ADO.NET','ASP.NET'],
+      units:[
+        {name:'.NET Basics & Language Elements',chapters:[
+          {id:'bca_d_u1_c1',emoji:'⚙️',name:'Intro to .NET Framework',tags:['Core'],imp:true,topics:'Managed code, CLR, intermediate language (IL), metadata, JIT compilation, automatic memory management, garbage collection.'},
+          {id:'bca_d_u1_c2',emoji:'📚',name:'Framework Class Library',tags:['Core'],imp:false,topics:'.NET base classes, namespaces, ASP.NET, web services, Windows Forms integration.'},
+          {id:'bca_d_u1_c3',emoji:'🔣',name:'Language Elements',tags:['Core'],imp:true,topics:'Variables, constants, data types, operators, precedence, if/else, select-case, while, do-while, for, for-each loops.'}
+        ]},
+        {name:'Types & Windows Programming',chapters:[
+          {id:'bca_d_u2_c1',emoji:'🗂️',name:'Types',tags:['Core'],imp:false,topics:'Value types, structures, enumerations, reference types, arrays, collections.'},
+          {id:'bca_d_u2_c2',emoji:'🖼️',name:'Windows Programming',tags:['Practical'],imp:true,topics:'Windows Forms — Button, CheckBox, ComboBox, Label, ListBox, RadioButton, TextBox. Events: Click, Close, Load, MouseMove.'},
+          {id:'bca_d_u2_c3',emoji:'📋',name:'Menus & Dialog Boxes',tags:['Practical'],imp:false,topics:'Creating menus, menu items, context menus, ShowDialog() method, common dialogs.'}
+        ]},
+        {name:'ADO.NET & ASP.NET',chapters:[
+          {id:'bca_d_u3_c1',emoji:'🗄️',name:'ADO.NET',tags:['Core','Important'],imp:true,topics:'Architecture, providers, Connection, Command, DataAdapter, Dataset, DataReader, stored procedures, transactions.'},
+          {id:'bca_d_u3_c2',emoji:'🌐',name:'ASP.NET Features',tags:['Core'],imp:true,topics:'Application states & structure, IIS — home directory, virtual directory, default document, log properties.'}
+        ]},
+        {name:'Web Controls, Forms & WCF',chapters:[
+          {id:'bca_d_u4_c1',emoji:'🧩',name:'Web Controls',tags:['Practical'],imp:true,topics:'Web & HTML controls, input validation controls, data controls, adding controls to a web page.'},
+          {id:'bca_d_u4_c2',emoji:'📝',name:'Web Forms & Server Controls',tags:['Practical'],imp:false,topics:'Types of server controls, code-behind model, adding ASP.NET code to a page.'},
+          {id:'bca_d_u4_c3',emoji:'🔄',name:'Web Services & WCF',tags:['Core'],imp:true,topics:'WSDL, creating web services in Visual Studio.NET, WCF architecture, contracts, bindings, client creation.'}
+        ]}
+      ]
+    },
+    data:{name:'Data Science',emoji:'📊',clr:'#fb923c',grd:'linear-gradient(135deg,#fb923c,#dc2626)',desc:'Data Lifecycle · Analytics · Statistics · ML',tags:['Python','R','ML'],
+      units:[
+        {name:'Introduction to Data Science',chapters:[
+          {id:'bca_ds_u1_c1',emoji:'🔬',name:'Intro to Data Science',tags:['Core'],imp:true,topics:'Concept, need, components of data science, big data overview, roles in data science.'},
+          {id:'bca_ds_u1_c2',emoji:'🌊',name:'Facets of Data',tags:['Core'],imp:false,topics:'Structured, unstructured, machine-generated, graph-based, audio/image/video, streaming data. Lifecycle & applications.'}
+        ]},
+        {name:'Data Science Process & Analytics',chapters:[
+          {id:'bca_ds_u2_c1',emoji:'🔁',name:'Data Science Process',tags:['Core'],imp:true,topics:'Setting research goals, retrieving data, cleansing, integrating, transforming, EDA, modeling, presentation, deployment.'},
+          {id:'bca_ds_u2_c2',emoji:'📉',name:'Data Analytics',tags:['Core','Important'],imp:true,topics:'Types of analytics (descriptive/predictive/prescriptive), lifecycle: discovery → data prep → model planning → model building. Regression, classification, clustering, association rules.'}
+        ]},
+        {name:'Statistics for Data Science',chapters:[
+          {id:'bca_ds_u3_c1',emoji:'🎲',name:'Statistics',tags:['Core'],imp:true,topics:'Population, sample, parameter, estimator, standard error, central tendency, spread, probability, normal & binary distribution, hypothesis testing, chi-square test.'}
+        ]},
+        {name:'Tools & Algorithms',chapters:[
+          {id:'bca_ds_u4_c1',emoji:'🛠️',name:'Data Science Tools',tags:['Practical'],imp:false,topics:'R, Python (pandas, numpy, matplotlib), Excel, SQL database, Weka introduction.'},
+          {id:'bca_ds_u4_c2',emoji:'🤖',name:'ML Algorithms',tags:['Core','Important'],imp:true,topics:'Linear regression, logistic regression, K-nearest neighbors, K-means clustering, decision trees, naive bayes basics.'}
+        ]}
+      ]
+    }
+  },
+
+  govt:{
+    reasoning:{name:'Reasoning',emoji:'🧠',clr:'#a78bfa',grd:'linear-gradient(135deg,#a78bfa,#7c3aed)',desc:'Logical · Series · Coding · Spatial · Classification',tags:['Logical','Verbal','Non-verbal'],topics:[
+      {id:'ssc_r_1',emoji:'🔢',text:'Number Series',tag:'Series',imp:true},
+      {id:'ssc_r_2',emoji:'👨‍👩‍👧',text:'Blood Relations',tag:'Verbal',imp:true},
+      {id:'ssc_r_3',emoji:'🔄',text:'Similarities & Differences',tag:'Core',imp:true},
+      {id:'ssc_r_4',emoji:'🎯',text:'Spatial Visualization',tag:'Non-verbal',imp:true},
+      {id:'ssc_r_5',emoji:'🧮',text:'Arithmetical Reasoning',tag:'Reasoning',imp:true},
+      {id:'ssc_r_6',emoji:'🗂️',text:'Classification / Odd One Out',tag:'Non-verbal',imp:true},
+      {id:'ssc_r_7',emoji:'🧭',text:'Spatial Orientation & Direction',tag:'Non-verbal',imp:true},
+      {id:'ssc_r_8',emoji:'🤝',text:'Analogies',tag:'Core',imp:true},
+      {id:'ssc_r_9',emoji:'🔀',text:'Non-verbal Series',tag:'Non-verbal',imp:true},
+      {id:'ssc_r_10',emoji:'👁️',text:'Visual Memory',tag:'Memory',imp:false},
+      {id:'ssc_r_11',emoji:'🔍',text:'Discrimination',tag:'Core',imp:false},
+      {id:'ssc_r_12',emoji:'👀',text:'Observation',tag:'Core',imp:false},
+      {id:'ssc_r_13',emoji:'💻',text:'Coding and Decoding',tag:'Coding',imp:true},
+      {id:'ssc_r_14',emoji:'🗓️',text:'Calendar & Clock',tag:'Miscellaneous',imp:true},
+      {id:'ssc_r_15',emoji:'📐',text:'Mirror & Water Image',tag:'Non-verbal',imp:true},
+      {id:'ssc_r_16',emoji:'🔲',text:'Figure Completion / Embedded Figures',tag:'Non-verbal',imp:true},
+      {id:'ssc_r_17',emoji:'🎰',text:'Paper Folding & Cutting',tag:'Non-verbal',imp:true},
+      {id:'ssc_r_18',emoji:'нням',text:'Venn Diagrams',tag:'Logical',imp:true},
+      {id:'ssc_r_19',emoji:'📦',text:'Cube & Dice',tag:'Non-verbal',imp:true},
+      {id:'ssc_r_20',emoji:'⚖️',text:'Syllogism',tag:'Logical',imp:true},
+      {id:'ssc_r_21',emoji:'📝',text:'Statement & Conclusions',tag:'Logical',imp:false},
+      {id:'ssc_r_22',emoji:'🔤',text:'Alphabetical Series',tag:'Series',imp:true},
+      {id:'ssc_r_23',emoji:'🔗',text:'Ranking Arrangement',tag:'Verbal',imp:true}
+    ]},
+    gk:{name:'General Knowledge & Awareness',emoji:'🌍',clr:'#fb923c',grd:'linear-gradient(135deg,#fb923c,#dc2626)',desc:'Current Affairs · Indian History · Geography · Science · Polity',tags:['Static GK','Current Affairs','Science'],topics:[
+      {id:'ssc_g_1',emoji:'📈',text:'Economic Scene',tag:'Economy',imp:true},
+      {id:'ssc_g_2',emoji:'🏛️',text:'General Policy & Governance',tag:'Polity',imp:false},
+      {id:'ssc_g_3',emoji:'📜',text:'Indian Constitution & Polity',tag:'Polity',imp:true},
+      {id:'ssc_g_4',emoji:'🔬',text:'Scientific Research & Inventions',tag:'Science',imp:true},
+      {id:'ssc_g_5',emoji:'🏆',text:'Sports & Games',tag:'Current',imp:false},
+      {id:'ssc_g_6',emoji:'📖',text:'Indian History (Ancient, Medieval, Modern)',tag:'Static',imp:true},
+      {id:'ssc_g_7',emoji:'🎨',text:'Indian Culture & Heritage',tag:'Static',imp:true},
+      {id:'ssc_g_8',emoji:'🗺️',text:'Indian & World Geography',tag:'Static',imp:true},
+      {id:'ssc_g_9',emoji:'⚗️',text:'Physics — Basic Concepts',tag:'Science',imp:true},
+      {id:'ssc_g_10',emoji:'🧪',text:'Chemistry — Basic Concepts',tag:'Science',imp:true},
+      {id:'ssc_g_11',emoji:'🌱',text:'Biology & Environment',tag:'Science',imp:true},
+      {id:'ssc_g_12',emoji:'🌐',text:'Current Affairs (National & International)',tag:'Current',imp:true},
+      {id:'ssc_g_13',emoji:'🏅',text:'Awards & Honours',tag:'Current',imp:false},
+      {id:'ssc_g_14',emoji:'📡',text:'Science & Technology (Recent Developments)',tag:'Science',imp:true},
+      {id:'ssc_g_15',emoji:'🌿',text:'Environment & Ecology',tag:'Environment',imp:true},
+      {id:'ssc_g_16',emoji:'🏗️',text:'Important Government Schemes',tag:'Polity',imp:true},
+      {id:'ssc_g_17',emoji:'🛡️',text:'Defence & Security',tag:'Static',imp:false},
+      {id:'ssc_g_18',emoji:'🌏',text:'International Organizations',tag:'International',imp:false}
+    ]},
+    maths:{name:'Mathematics',emoji:'📐',clr:'#60a5fa',grd:'linear-gradient(135deg,#60a5fa,#2563eb)',desc:'Arithmetic · Percentages · Mensuration · Time · Algebra',tags:['Arithmetic','Algebra','Geometry'],topics:[
+      {id:'ssc_m_1',emoji:'🔢',text:'Number System & Simplification',tag:'Basic',imp:true},
+      {id:'ssc_m_2',emoji:'➗',text:'Ratio and Proportion',tag:'Core',imp:true},
+      {id:'ssc_m_3',emoji:'➕',text:'Fundamental Arithmetic Operations',tag:'Core',imp:true},
+      {id:'ssc_m_4',emoji:'&#8734;',text:'LCM and HCF',tag:'Core',imp:true},
+      {id:'ssc_m_5',emoji:'💯',text:'Percentages',tag:'Core',imp:true},
+      {id:'ssc_m_6',emoji:'📈',text:'Profit, Loss & Discount',tag:'Important',imp:true},
+      {id:'ssc_m_7',emoji:'🏷️',text:'Discount & Marked Price',tag:'Important',imp:true},
+      {id:'ssc_m_8',emoji:'📏',text:'Mensuration (2D & 3D)',tag:'Geometry',imp:true},
+      {id:'ssc_m_9',emoji:'📊',text:'Average',tag:'Core',imp:true},
+      {id:'ssc_m_10',emoji:'🏦',text:'Simple & Compound Interest',tag:'Important',imp:true},
+      {id:'ssc_m_11',emoji:'⚖️',text:'Ratio, Proportion & Mixture',tag:'Core',imp:true},
+      {id:'ssc_m_12',emoji:'🚗',text:'Time, Speed & Distance',tag:'Important',imp:true},
+      {id:'ssc_m_13',emoji:'⏱️',text:'Time & Work',tag:'Important',imp:true},
+      {id:'ssc_m_14',emoji:'🔣',text:'Decimals & Fractions',tag:'Basic',imp:false},
+      {id:'ssc_m_15',emoji:'📐',text:'Geometry (Lines, Angles, Triangles, Circles)',tag:'Geometry',imp:true},
+      {id:'ssc_m_16',emoji:'🔺',text:'Trigonometry (Basic)',tag:'Trigonometry',imp:true},
+      {id:'ssc_m_17',emoji:'🎲',text:'Probability (Basic)',tag:'Advanced',imp:false},
+      {id:'ssc_m_18',emoji:'📉',text:'Data Interpretation (Tables & Charts)',tag:'DI',imp:true},
+      {id:'ssc_m_19',emoji:'🔠',text:'Algebra (Basic Identities)',tag:'Algebra',imp:true},
+      {id:'ssc_m_20',emoji:'🏊',text:'Boats & Streams / Pipes & Cisterns',tag:'Important',imp:true}
+    ]},
+    english:{name:'English Language',emoji:'🔤',clr:'#34d399',grd:'linear-gradient(135deg,#34d399,#059669)',desc:'Grammar · Vocabulary · Comprehension · Usage',tags:['Grammar','Vocabulary','Comprehension'],topics:[
+      {id:'ssc_e_1',emoji:'🐛',text:'Spot the Error',tag:'Grammar',imp:true},
+      {id:'ssc_e_2',emoji:'📝',text:'Fill in the Blanks',tag:'Grammar',imp:true},
+      {id:'ssc_e_3',emoji:'💬',text:'Idioms & Phrases',tag:'Vocabulary',imp:true},
+      {id:'ssc_e_4',emoji:'🔁',text:'One Word Substitution',tag:'Vocabulary',imp:true},
+      {id:'ssc_e_5',emoji:'✏️',text:'Improvement of Sentences',tag:'Grammar',imp:true},
+      {id:'ssc_e_6',emoji:'🔄',text:'Active / Passive Voice',tag:'Grammar',imp:true},
+      {id:'ssc_e_7',emoji:'📃',text:'Shuffling of Sentences in a Passage',tag:'Comprehension',imp:true},
+      {id:'ssc_e_8',emoji:'🔡',text:'Spellings / Detecting Misspelt Words',tag:'Vocab',imp:true},
+      {id:'ssc_e_9',emoji:'🧩',text:'Shuffling of Sentence Parts',tag:'Grammar',imp:true},
+      {id:'ssc_e_10',emoji:'📖',text:'Cloze Passage',tag:'Comprehension',imp:true},
+      {id:'ssc_e_11',emoji:'📢',text:'Direct / Indirect Narration',tag:'Grammar',imp:true},
+      {id:'ssc_e_12',emoji:'📚',text:'Synonyms / Antonyms / Homonyms',tag:'Vocabulary',imp:true},
+      {id:'ssc_e_13',emoji:'🔠',text:'Reading Comprehension',tag:'Comprehension',imp:true}
+    ]},
+    hindi:{name:'Hindi Language',emoji:'🇮🇳',clr:'#f472b6',grd:'linear-gradient(135deg,#f472b6,#be185d)',desc:'व्याकरण · शब्द-ज्ञान · वाक्य-रचना · अनुवाद',tags:['व्याकरण','शब्द-भंडार','वाक्य'],topics:[
+      {id:'ssc_h_1',emoji:'🔗',text:'संधि और संधि विच्छेद',tag:'व्याकरण',imp:true},
+      {id:'ssc_h_2',emoji:'➕',text:'उपसर्ग',tag:'शब्द',imp:false},
+      {id:'ssc_h_3',emoji:'➖',text:'प्रत्यय',tag:'शब्द',imp:false},
+      {id:'ssc_h_4',emoji:'🔄',text:'पर्यायवाची शब्द',tag:'शब्द-भंडार',imp:true},
+      {id:'ssc_h_5',emoji:'💬',text:'मुहावरे और लोकोक्तियाँ',tag:'मुहावरे',imp:true},
+      {id:'ssc_h_6',emoji:'🧩',text:'समास और समास विग्रह',tag:'व्याकरण',imp:true},
+      {id:'ssc_h_7',emoji:'↔️',text:'विलोम (विपरीतार्थक) शब्द',tag:'शब्द-भंडार',imp:true},
+      {id:'ssc_h_8',emoji:'🔤',text:'शब्द-युग्म',tag:'शब्द',imp:false},
+      {id:'ssc_h_9',emoji:'📦',text:'वाक्यांश के लिए एक सार्थक शब्द',tag:'शब्द',imp:true},
+      {id:'ssc_h_10',emoji:'🔠',text:'संज्ञा से विशेषण बनाना',tag:'व्याकरण',imp:false},
+      {id:'ssc_h_11',emoji:'📋',text:'अनेकार्थक शब्द',tag:'शब्द-भंडार',imp:false},
+      {id:'ssc_h_12',emoji:'✅',text:'वाक्य-शुद्धि : अशुद्ध वाक्यों का शोधन',tag:'शुद्धि',imp:true},
+      {id:'ssc_h_13',emoji:'🗣️',text:'वाच्य — कर्तृ, कर्म, भाव वाच्य',tag:'व्याकरण',imp:true},
+      {id:'ssc_h_14',emoji:'🏃',text:'क्रिया भेद',tag:'व्याकरण',imp:true},
+      {id:'ssc_h_15',emoji:'🔡',text:'शब्द-शुद्धि : अशुद्ध शब्दों का शोधन',tag:'शुद्धि',imp:true},
+      {id:'ssc_h_16',emoji:'💻',text:'तकनीकी शब्दों के हिंदी समानार्थक',tag:'अनुवाद',imp:false},
+      {id:'ssc_h_17',emoji:'↕️',text:'सरल/संयुक्त/मिश्र वाक्य अनुवाद',tag:'अनुवाद',imp:true},
+      {id:'ssc_h_18',emoji:'📨',text:'कार्यालयी पत्र-लेखन',tag:'पत्र-लेखन',imp:false},
+      {id:'ssc_h_19',emoji:'📖',text:'अपठित गद्यांश (Comprehension)',tag:'गद्य',imp:true},
+      {id:'ssc_h_20',emoji:'🔢',text:'तत्सम-तद्भव शब्द',tag:'व्याकरण',imp:true},
+      {id:'ssc_h_21',emoji:'🌐',text:'देशज और विदेशज शब्द',tag:'व्याकरण',imp:false}
+    ]}
+  },
+
+  sbipo:{
+    pre_reasoning:{name:'Reasoning (Prelims)',emoji:'🧠',clr:'#a78bfa',grd:'linear-gradient(135deg,#a78bfa,#7c3aed)',desc:'Syllogism · Seating · Puzzles · Blood Relations · Inequalities',tags:['Prelims Core','Speed','Logic'],topics:[
+      {id:'sbi_pr_1',emoji:'💡',text:'Logical Reasoning',tag:'Deductions',imp:true},
+      {id:'sbi_pr_2',emoji:'🔤',text:'Alphanumeric Series',tag:'Series',imp:true},
+      {id:'sbi_pr_3',emoji:'🏅',text:'Ranking / Direction / Alphabet Test',tag:'Spatial',imp:true},
+      {id:'sbi_pr_4',emoji:'📊',text:'Data Sufficiency',tag:'Analytics',imp:true},
+      {id:'sbi_pr_5',emoji:'⚖️',text:'Coded Inequalities',tag:'Logic',imp:true},
+      {id:'sbi_pr_6',emoji:'🪑',text:'Linear Seating Arrangement',tag:'Arrangement',imp:true},
+      {id:'sbi_pr_7',emoji:'🔄',text:'Circular Seating Arrangement',tag:'Arrangement',imp:true},
+      {id:'sbi_pr_8',emoji:'🧩',text:'Complex Puzzles',tag:'Arrangement',imp:true},
+      {id:'sbi_pr_9',emoji:'📋',text:'Tabulation',tag:'Arrangement',imp:false},
+      {id:'sbi_pr_10',emoji:'📐',text:'Syllogism',tag:'Deductions',imp:true},
+      {id:'sbi_pr_11',emoji:'👨‍👩‍👧',text:'Blood Relations',tag:'Spatial',imp:true},
+      {id:'sbi_pr_12',emoji:'➡️',text:'Input-Output',tag:'Processing',imp:true},
+      {id:'sbi_pr_13',emoji:'🔢',text:'Coding-Decoding',tag:'Processing',imp:true},
+      {id:'sbi_pr_14',emoji:'🗓️',text:'Order & Ranking',tag:'Arrangement',imp:false},
+      {id:'sbi_pr_15',emoji:'🔑',text:'Critical Reasoning / Statements & Conclusions',tag:'Deductions',imp:false}
+    ]},
+    pre_quant:{name:'Quantitative Aptitude (Prelims)',emoji:'🔢',clr:'#60a5fa',grd:'linear-gradient(135deg,#60a5fa,#2563eb)',desc:'Simplification · DI · Interest · Time-Work · Probability',tags:['Prelims','Speed','Arithmetic'],topics:[
+      {id:'sbi_pq_1',emoji:'⚡',text:'Simplification & Approximation',tag:'Calculation',imp:true},
+      {id:'sbi_pq_2',emoji:'📈',text:'Profit, Loss & Discount',tag:'Arithmetic',imp:true},
+      {id:'sbi_pq_3',emoji:'🧪',text:'Mixtures & Allegations',tag:'Arithmetic',imp:true},
+      {id:'sbi_pq_4',emoji:'💰',text:'Simple & Compound Interest',tag:'Finance',imp:true},
+      {id:'sbi_pq_5',emoji:'⏰',text:'Work & Time / Pipes & Cisterns',tag:'Arithmetic',imp:true},
+      {id:'sbi_pq_6',emoji:'🚗',text:'Time, Speed & Distance / Trains / Boats',tag:'Arithmetic',imp:true},
+      {id:'sbi_pq_7',emoji:'📐',text:'Mensuration (2D & 3D)',tag:'Geometry',imp:true},
+      {id:'sbi_pq_8',emoji:'📊',text:'Data Interpretation',tag:'DI',imp:true},
+      {id:'sbi_pq_9',emoji:'💯',text:'Ratio, Proportion & Percentage',tag:'Arithmetic',imp:true},
+      {id:'sbi_pq_10',emoji:'♾️',text:'Number Systems & LCM/HCF',tag:'Calculation',imp:true},
+      {id:'sbi_pq_11',emoji:'🔢',text:'Number Series / Missing Numbers',tag:'Calculation',imp:true},
+      {id:'sbi_pq_12',emoji:'🎲',text:'Permutation, Combination & Probability',tag:'Advanced',imp:true},
+      {id:'sbi_pq_13',emoji:'📉',text:'Quadratic Equations',tag:'Algebra',imp:true},
+      {id:'sbi_pq_14',emoji:'👥',text:'Partnership',tag:'Arithmetic',imp:false},
+      {id:'sbi_pq_15',emoji:'📋',text:'Average',tag:'Arithmetic',imp:true}
+    ]},
+    pre_english:{name:'English (Prelims)',emoji:'📖',clr:'#34d399',grd:'linear-gradient(135deg,#34d399,#059669)',desc:'Reading Comprehension · Cloze · Para Jumbles · Vocabulary',tags:['Prelims Verbal','Syntax'],topics:[
+      {id:'sbi_pe_1',emoji:'📚',text:'Reading Comprehension',tag:'Comprehension',imp:true},
+      {id:'sbi_pe_2',emoji:'📝',text:'Cloze Test',tag:'Syntax',imp:true},
+      {id:'sbi_pe_3',emoji:'🔀',text:'Para Jumbles',tag:'Verbal',imp:true},
+      {id:'sbi_pe_4',emoji:'🔣',text:'Fill in the Blanks (Single & Double)',tag:'Syntax',imp:true},
+      {id:'sbi_pe_5',emoji:'🐛',text:'Error Spotting / Detection',tag:'Lexicon',imp:true},
+      {id:'sbi_pe_6',emoji:'📖',text:'Vocabulary (Synonyms & Antonyms)',tag:'Lexicon',imp:true},
+      {id:'sbi_pe_7',emoji:'✏️',text:'Sentence Improvement / Correction',tag:'Syntax',imp:true},
+      {id:'sbi_pe_8',emoji:'🔤',text:'Word Rearrangement',tag:'Verbal',imp:false},
+      {id:'sbi_pe_9',emoji:'🧩',text:'Paragraph Completion',tag:'Comprehension',imp:true},
+      {id:'sbi_pe_10',emoji:'📏',text:'Phrase / Connectors',tag:'Syntax',imp:false}
+    ]},
+    main_di:{name:'Data Interpretation & Analysis (Mains)',emoji:'📊',clr:'#fb923c',grd:'linear-gradient(135deg,#fb923c,#dc2626)',desc:'Tables · Line · Pie · Bar · Caselet · Mixed DI',tags:['Mains Core','High Weightage'],topics:[
+      {id:'sbi_md_1',emoji:'📋',text:'Tabular DI',tag:'Plots',imp:true},
+      {id:'sbi_md_2',emoji:'减',text:'Line Graph DI',tag:'Plots',imp:true},
+      {id:'sbi_md_3',emoji:'🥧',text:'Pie Chart DI',tag:'Plots',imp:true},
+      {id:'sbi_md_4',emoji:'📊',text:'Bar Graph DI',tag:'Plots',imp:true},
+      {id:'sbi_md_5',emoji:'🕸️',text:'Radar / Spider Graph',tag:'Complex',imp:true},
+      {id:'sbi_md_6',emoji:'🔎',text:'Missing Case DI / Caselet',tag:'Complex',imp:true},
+      {id:'sbi_md_7',emoji:'📈',text:'Mixed / Combination DI',tag:'Complex',imp:true},
+      {id:'sbi_md_8',emoji:'❓',text:'Data Sufficiency',tag:'Analytics',imp:true},
+      {id:'sbi_md_9',emoji:'🎲',text:'Probability',tag:'Theoretical',imp:true},
+      {id:'sbi_md_10',emoji:'🔢',text:'Permutation & Combination',tag:'Theoretical',imp:true},
+      {id:'sbi_md_11',emoji:'📐',text:'Quantitative Comparison',tag:'Comparison',imp:false}
+    ]},
+    main_reasoning:{name:'Reasoning & Computer Aptitude (Mains)',emoji:'🖥️',clr:'#f472b6',grd:'linear-gradient(135deg,#f472b6,#be185d)',desc:'Advanced Logic · Arrangements · Computer Knowledge',tags:['Mains Core','Advanced'],topics:[
+      {id:'sbi_mr_1',emoji:'📐',text:'Syllogism (Advanced)',tag:'Advanced',imp:true},
+      {id:'sbi_mr_2',emoji:'🔄',text:'Circular Seating Arrangement',tag:'Arrangement',imp:true},
+      {id:'sbi_mr_3',emoji:'➡️',text:'Linear Seating Arrangement',tag:'Arrangement',imp:true},
+      {id:'sbi_mr_4',emoji:'⚙️',text:'Input-Output (Complex)',tag:'Automata',imp:true},
+      {id:'sbi_mr_5',emoji:'💻',text:'Coding-Decoding (Advanced)',tag:'Automata',imp:true},
+      {id:'sbi_mr_6',emoji:'🌐',text:'Computer Networking & Internet',tag:'Computer',imp:true},
+      {id:'sbi_mr_7',emoji:'💾',text:'Computer Memory & Storage',tag:'Computer',imp:true},
+      {id:'sbi_mr_8',emoji:'⚡',text:'Operating System Basics',tag:'Computer',imp:true},
+      {id:'sbi_mr_9',emoji:'📱',text:'Computer Hardware & Software',tag:'Computer',imp:true},
+      {id:'sbi_mr_10',emoji:'🔐',text:'Computer Security & Viruses',tag:'Computer',imp:true},
+      {id:'sbi_mr_11',emoji:'🧩',text:'MS Office & Database Basics',tag:'Computer',imp:false},
+      {id:'sbi_mr_12',emoji:'🎯',text:'Critical Reasoning',tag:'Critical',imp:true},
+      {id:'sbi_mr_13',emoji:'🧮',text:'Statement & Assumptions / Course of Action',tag:'Critical',imp:true},
+      {id:'sbi_mr_14',emoji:'🔗',text:'Double Puzzle / Floor-based Puzzle',tag:'Arrangement',imp:true},
+      {id:'sbi_mr_15',emoji:'📡',text:'Number / Letter-based Puzzles',tag:'Arrangement',imp:false}
+    ]},
+    main_ga:{name:'General / Economy / Banking Awareness (Mains)',emoji:'🏦',clr:'#2dd4bf',grd:'linear-gradient(135deg,#2dd4bf,#0f766e)',desc:'RBI · Financial Awareness · Banking Terms · Current Affairs',tags:['Mains Score','Banking'],topics:[
+      {id:'sbi_mg_1',emoji:'💸',text:'Financial Awareness (Budget, GDP, Inflation)',tag:'Monetary',imp:true},
+      {id:'sbi_mg_2',emoji:'📰',text:'Current Affairs (National & International)',tag:'Real-time',imp:true},
+      {id:'sbi_mg_3',emoji:'📚',text:'General Knowledge (Static)',tag:'Static',imp:false},
+      {id:'sbi_mg_4',emoji:'🏛️',text:'Banking & Financial Awareness (RBI, SEBI)',tag:'Monetary',imp:true},
+      {id:'sbi_mg_5',emoji:'📈',text:'Economy & Markets',tag:'Monetary',imp:true},
+      {id:'sbi_mg_6',emoji:'🌍',text:'International Financial Institutions (IMF, WB)',tag:'International',imp:true},
+      {id:'sbi_mg_7',emoji:'📋',text:'Banking Terms & Products',tag:'Monetary',imp:true},
+      {id:'sbi_mg_8',emoji:'🏅',text:'Awards, Sports, Person in News',tag:'Current',imp:false},
+      {id:'sbi_mg_9',emoji:'🔒',text:'Government Schemes (Financial Inclusion)',tag:'Polity',imp:true},
+      {id:'sbi_mg_10',emoji:'💳',text:'Digital Banking & Payment Systems',tag:'Banking',imp:true},
+      {id:'sbi_mg_11',emoji:'📊',text:'Capital & Money Markets',tag:'Monetary',imp:true}
+    ]},
+    main_english:{name:'English Language (Mains)',emoji:'✍️',clr:'#ec4899',grd:'linear-gradient(135deg,#ec4899,#be185d)',desc:'Advanced RC · Grammar · Essay · Letter Writing',tags:['Mains Verbal'],topics:[
+      {id:'sbi_me_1',emoji:'📖',text:'Reading Comprehension (Advanced)',tag:'Analysis',imp:true},
+      {id:'sbi_me_2',emoji:'📝',text:'Grammar (Advanced)',tag:'Syntax',imp:true},
+      {id:'sbi_me_3',emoji:'📚',text:'Vocabulary (Advanced)',tag:'Lexical',imp:true},
+      {id:'sbi_me_4',emoji:'🔀',text:'Para Jumbles',tag:'Analysis',imp:true},
+      {id:'sbi_me_5',emoji:'📝',text:'Cloze Test',tag:'Syntax',imp:true},
+      {id:'sbi_me_6',emoji:'🐛',text:'Error Spotting',tag:'Syntax',imp:true},
+      {id:'sbi_me_7',emoji:'🔣',text:'Fill in the Blanks',tag:'Syntax',imp:true},
+      {id:'sbi_me_8',emoji:'✍️',text:'Essay Writing',tag:'Writing',imp:true},
+      {id:'sbi_me_9',emoji:'📨',text:'Letter / Precis Writing',tag:'Writing',imp:true},
+      {id:'sbi_me_10',emoji:'✏️',text:'Sentence Rearrangement',tag:'Analysis',imp:false},
+      {id:'sbi_me_11',emoji:'💡',text:'Inference / Assumption Based Questions',tag:'Analysis',imp:true}
+    ]},
+    gd_pi:{name:'Group Discussion & Personal Interview',emoji:'🎤',clr:'#a78bfa',grd:'linear-gradient(135deg,#a78bfa,#7c3aed)',desc:'GD Topics · Interview Prep · Banking Awareness',tags:['Final Round'],topics:[
+      {id:'sbi_gd_1',emoji:'🌐',text:'Current Economic Issues (GD Topics)',tag:'GD',imp:true},
+      {id:'sbi_gd_2',emoji:'🏦',text:'Banking Sector Reforms (GD Topics)',tag:'GD',imp:true},
+      {id:'sbi_gd_3',emoji:'💻',text:'Technology in Banking (GD Topics)',tag:'GD',imp:true},
+      {id:'sbi_gd_4',emoji:'🧑‍💼',text:'Personal Interview — Why Banking?',tag:'PI',imp:true},
+      {id:'sbi_gd_5',emoji:'📋',text:'Personal Interview — About SBI',tag:'PI',imp:true},
+      {id:'sbi_gd_6',emoji:'🔍',text:'Personal Interview — Current Affairs',tag:'PI',imp:true},
+      {id:'sbi_gd_7',emoji:'📚',text:'Personal Interview — Subject Knowledge',tag:'PI',imp:false}
+    ]}
+  }
+};
+
+const MODE_META = {
+  bca:{label:'BCA Matrix',emoji:'🎓',clr:'#a78bfa',grd:'linear-gradient(135deg,#a78bfa,#7c3aed)'},
+  govt:{label:'SSC GD 2026',emoji:'🛡️',clr:'#fb923c',grd:'linear-gradient(135deg,#fb923c,#dc2626)'},
+  sbipo:{label:'SBI PO 2026',emoji:'🏦',clr:'#60a5fa',grd:'linear-gradient(135deg,#60a5fa,#2563eb)'}
+};
+
+// ══ STATE ══
+let S = JSON.parse(localStorage.getItem('nxs_app_v2')||'{}');
+S.bm = S.bm||{}; S.notes = S.notes||{}; S.done = S.done||{};
+S.streak = S.streak||{days:[],last:null};
+S.recent = S.recent||[];
+S.name = S.name||'';
+function save(){localStorage.setItem('nxs_app_v2',JSON.stringify(S))}
+
+let CUR_PAGE='home', CUR_MODE='bca', CUR_SUBJ=null, OPEN_U={}, STAR_F=false, NOTE_TARGET=null;
+
+// ══ ENGINE MOUNT FOR DYNAMIC VECTOR INJECTION ══
+function setupStaticUI() {
+  document.getElementById('backBtn').innerHTML = SVGS.arrowLeft;
+  document.getElementById('searchBtn').innerHTML = SVGS.search;
+  document.getElementById('starFilterBtn').innerHTML = SVGS.starFilled;
+  document.getElementById('pillStarBtn').innerHTML = SVGS.starFilled;
+  
+  document.getElementById('searchInnerBox').innerHTML = `<i style="display:flex;align-items:center;color:var(--muted)">${SVGS.search}</i><input type="text" id="syllSearch" placeholder="Search topics..." oninput="doSearch()">`;
+  document.getElementById('notesSearchInnerBox').innerHTML = `<i style="display:flex;align-items:center;color:var(--muted)">${SVGS.search}</i><input type="text" id="notesSearch" placeholder="Search notes..." oninput="filterNotes()">`;
+  
+  renderBottomNav();
+}
+
+function renderBottomNav() {
+  const tabs = [
+    { p: 'home', icon: SVGS.home, lbl: 'Home', c: '#a78bfa' },
+    { p: 'syllabus', icon: SVGS.books, lbl: 'Syllabus', c: '#60a5fa' },
+    { p: 'notes', icon: SVGS.notebook, lbl: 'Notes', c: '#34d399' },
+    { p: 'bookmarks', icon: SVGS.star, lbl: 'Saved', c: '#facc15' },
+    { p: 'progress', icon: SVGS.chart, lbl: 'Progress', c: '#fb923c' },
+    { p: 'profile', icon: SVGS.user, lbl: 'Profile', c: '#f472b6' }
+  ];
+  
+  document.getElementById('bottomNavPanel').innerHTML = tabs.map(t => `
+    <div class="nav-item${CUR_PAGE===t.p?' active':''}" style="--nc:${t.c}" onclick="goToPage('${t.p}')">
+      ${t.icon}<span>${t.lbl}</span><div class="nav-dot"></div>
+    </div>`).join('');
+}
+
+// ══ ONBOARD ══
+function checkOnboard(){
+  if(!S.name){
+    document.getElementById('onboardOverlay').style.display='flex';
+    setTimeout(()=>document.getElementById('nameInput').focus(),400);
+  } else {
+    document.getElementById('onboardOverlay').style.display='none';
+  }
+}
+function saveOnboard(){
+  const n=document.getElementById('nameInput').value.trim();
+  if(!n){document.getElementById('nameInput').focus();return;}
+  S.name=n; save();
+  document.getElementById('onboardOverlay').style.display='none';
+  renderHome();
+}
+document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveOnboard()});
+
+function promptRename(){
+  const n=prompt('Enter your new name:',S.name);
+  if(n&&n.trim()){S.name=n.trim();save();renderProfile();toast('Name updated ✓');}
+}
+
+// ══ PAGES ══
+function goToPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  CUR_PAGE=p;
+  renderBottomNav();
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('mainScroll').scrollTop=0;
+  
+  const back=document.getElementById('backBtn');
+  const logo=document.getElementById('topLogo');
+  const title=document.getElementById('topTitle');
+  if(p==='home'){back.classList.remove('show');logo.style.display='';title.style.display='none';}
+  else{back.classList.add('show');logo.style.display='none';title.style.display='';title.textContent={syllabus:'Syllabus',notes:'My Notes',bookmarks:'Saved Topics',progress:'Progress',profile:'Profile'}[p]||p;}
+  if(p==='home')renderHome();
+  if(p==='notes')renderNotes();
+  if(p==='bookmarks')renderBookmarks();
+  if(p==='progress')renderProgress();
+  if(p==='profile')renderProfile();
+  if(p==='syllabus')renderSyllabus();
+}
+function goBack(){
+  if(CUR_PAGE==='syllabus'&&CUR_SUBJ){CUR_SUBJ=null;renderSyllabus();return;}
+  goToPage('home');
+}
+
+// ══ MODE ══
+function setMode(m){CUR_MODE=m;CUR_SUBJ=null;OPEN_U={};updateOrbColor();}
+function updateOrbColor(){
+  const c={bca:['#7f77dd','#3b82f6'],govt:['#fb923c','#f472b6'],sbipo:['#2dd4bf','#ec4899']}[CUR_MODE];
+  document.getElementById('oA').style.background=c[0];
+  document.getElementById('oB').style.background=c[1];
+}
+
+// ══ HOME ══
+function renderHome(){
+  const uname=S.name||'Student';
+  const h=new Date().getHours();
+  const greet=h<12?'Good Morning! 🌅':h<17?'Good Afternoon! ☀️':'Good Evening! 🌙';
+  document.getElementById('greeting').textContent=`${greet} ${uname}`;
+  document.getElementById('homeSub').textContent=`Keep grinding — you got this! 💪`;
+  renderStreak();
+  renderHomeModeCards();
+  renderHomeStats();
+  renderRecent();
+  document.getElementById('bmCount').textContent=Object.keys(S.bm).length;
+}
+function renderStreak(){
+  const today=new Date().toDateString();
+  if(S.streak.last!==today){
+    const yest=new Date(Date.now()-86400000).toDateString();
+    if(S.streak.last===yest){S.streak.days.push(today);}
+    else{S.streak.days=[today];}
+    S.streak.last=today;save();
+  }
+  document.getElementById('streakNum').textContent=S.streak.days.length;
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const d=document.getElementById('streakDays');d.innerHTML='';
+  for(let i=6;i>=0;i--){
+    const dt=new Date(Date.now()-i*86400000);
+    const ds=dt.toDateString();
+    const day=days[dt.getDay()];
+    const cls=ds===today?'today':S.streak.days.includes(ds)?'done':'miss';
+    d.innerHTML+=`<div class="sday ${cls}">${day.slice(0,2)}</div>`;
+  }
+}
+function renderHomeModeCards(){
+  const g=document.getElementById('homeModeCards');g.innerHTML='';
+  Object.entries(MODE_META).forEach(([k,m],i)=>{
+    const data=DB[k];
+    const cnt=k==='bca'?Object.values(data).reduce((a,s)=>a+s.units.reduce((b,u)=>b+u.chapters.length,0),0):Object.values(data).reduce((a,s)=>a+s.topics.length,0);
+    const d=document.createElement('div');
+    d.className='mcard'+(k===CUR_MODE?' active':'')+(i===2?' full':'');
+    d.style.cssText=`--clr:${m.clr};--grd:${m.grd};animation-delay:${i*.08}s`;
+    d.innerHTML=`<span class="mc-icon">${m.emoji}</span><div class="mc-name">${m.label}</div><div class="mc-meta">${cnt} topics total</div><div class="mc-bar"><div class="mc-fill" id="hb-${k}"></div></div>`;
+    d.onclick=e=>{rip(d,e,m.clr);setMode(k);goToPage('syllabus');};
+    g.appendChild(d);
+    setTimeout(()=>{const f=document.getElementById('hb-'+k);if(f)f.style.width='100%';},100+i*40);
+  });
+}
+function renderHomeStats(){
+  const g=document.getElementById('homeStats');g.innerHTML='';
+  const bm=Object.keys(S.bm).length;
+  const nt=Object.keys(S.notes).length;
+  const dn=Object.keys(S.done).length;
+  [[bm,'Bookmarks','#facc15'],[nt,'Notes','#60a5fa'],[dn,'Studied','#34d399']].forEach(([n,l,c],i)=>{
+    const d=document.createElement('div');d.className='qstat';d.style.animationDelay=i*.07+'s';
+    d.innerHTML=`<div class="qstat-n" style="color:${c}">${n}</div><div class="qstat-l">${l}</div>`;
+    g.appendChild(d);
+  });
+}
+function renderRecent(){
+  const g=document.getElementById('recentSection');g.innerHTML='';
+  if(!S.recent.length){
+    g.innerHTML='<div class="empty-state"><span class="es-icon">🕐</span><p>No recent activity yet</p></div>';
+    return;
+  }
+  S.recent.slice(0,5).forEach((r,i)=>{
+    const d=document.createElement('div');d.className='recent-item';d.style.animationDelay=i*.05+'s';
+    d.innerHTML=`<div class="ri-icon" style="background:rgba(255,255,255,.05);font-size:20px">${r.emoji}</div><div><div class="ri-name">${r.name}</div><div class="ri-meta">${r.mode.toUpperCase()} · ${r.sub}</div></div><i class="ri-chev" style="margin-left:auto;color:var(--muted)">${SVGS.chevronRight}</i>`;
+    d.onclick=()=>{setMode(r.mode);CUR_SUBJ=r.subj;goToPage('syllabus');};
+    g.appendChild(d);
+  });
+}
+
+// ══ SYLLABUS ══
+function renderSyllabus(){
+  buildModeSelector();
+  if(!CUR_SUBJ){renderSubjectList();return;}
+  renderSubject();
+}
+function buildModeSelector(){
+  const g=document.getElementById('modeSelector');g.innerHTML='';
+  Object.entries(MODE_META).forEach(([k,m])=>{
+    const p=document.createElement('div');
+    p.className='mpill'+(k===CUR_MODE?' active':'');
+    p.style.cssText=`--clr:${m.clr}`;
+    p.innerHTML=`${m.emoji} ${m.label}`;
+    p.onclick=()=>{setMode(k);CUR_SUBJ=null;renderSyllabus();};
+    g.appendChild(p);
+  });
+}
+function renderSubjectList(){
+  const el=document.getElementById('syllContent');
+  const data=DB[CUR_MODE];
+  let html='<div style="padding:8px 14px 0;display:flex;flex-direction:column;gap:8px">';
+  Object.entries(data).forEach(([k,s],i)=>{
+    const cnt=CUR_MODE==='bca'?s.units.reduce((a,u)=>a+u.chapters.length,0):s.topics.length;
+    const done=CUR_MODE==='bca'?s.units.reduce((a,u)=>a+u.chapters.filter(c=>S.done[c.id]).length,0):s.topics.filter(t=>S.done[t.id]).length;
+    const pct=Math.round(done/cnt*100)||0;
+    html+=`<div class="mcard" style="--clr:${s.clr};--grd:${s.grd};animation-delay:${i*.06}s;flex-direction:row;align-items:center;gap:14px" onclick="openSubject('${k}')">
+      <span style="font-size:28px">${s.emoji}</span>
+      <div style="flex:1">
+        <div class="mc-name">${s.name}</div>
+        <div class="mc-meta">${CUR_MODE==='bca'?s.units.length+' units · ':''}${cnt} topics</div>
+        <div class="mc-bar" style="margin-top:6px"><div class="mc-fill" style="width:${pct}%;background:${s.clr}"></div></div>
+        <div style="font-size:9.5px;color:var(--muted);margin-top:3px">${pct}% studied</div>
+      </div>
+      <i style="color:var(--muted);display:flex;align-items:center">${SVGS.chevronRight}</i>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+  document.getElementById('backBtn').classList.remove('show');
+  document.getElementById('topLogo').style.display='none';
+  document.getElementById('topTitle').style.display='';
+  document.getElementById('topTitle').textContent='Syllabus';
+}
+function openSubject(k){
+  CUR_SUBJ=k;
+  const s=DB[CUR_MODE][k];
+  S.recent=S.recent.filter(r=>!(r.mode===CUR_MODE&&r.subj===k));
+  S.recent.unshift({mode:CUR_MODE,subj:k,name:s.name,emoji:s.emoji,clr:s.clr,sub:Object.keys(DB[CUR_MODE]).length+' sections'});
+  if(S.recent.length>10)S.recent.pop();
+  save();
+  renderSubject();
+}
+function renderSubject(q=''){
+  const s=DB[CUR_MODE][CUR_SUBJ];
+  document.getElementById('topTitle').textContent=s.name;
+  document.getElementById('backBtn').classList.add('show');
+  document.getElementById('topLogo').style.display='none';
+  const fl=q.toLowerCase();
+  const tagStr=s.tags.map(t=>`<span class="pb-tag">${t}</span>`).join('');
+  let html=`<div class="page-banner" style="--clr:${s.clr};--bc:${s.clr}33">
+    <span class="pb-ico">${s.emoji}</span>
+    <div><div class="pb-name">${s.name}</div><div class="pb-desc">${s.desc}</div><div class="pb-tags">${tagStr}</div></div>
+  </div>`;
+
+  if(CUR_MODE==='bca'){
+    html+='<div class="unit-stack">';
+    let any=0;
+    s.units.forEach((u,ui)=>{
+      const visCh=u.chapters.filter(ch=>(!fl||ch.name.toLowerCase().includes(fl)||ch.topics.toLowerCase().includes(fl))&&(!STAR_F||S.bm[ch.id]));
+      if(!visCh.length)return; any++;
+      const uid=`u_${CUR_SUBJ}_${ui}`;
+      const isOpen=OPEN_U[uid]||!!fl||STAR_F;
+      const chHtml=visCh.map((ch,ci)=>{
+        const tgs=ch.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+        const isDone=!!S.done[ch.id];
+        const isBm=!!S.bm[ch.id];
+        const hasN=!!S.notes[ch.id];
+        const ytC=`https://www.youtube.com/results?search_query=BCA+${encodeURIComponent(s.name+' '+ch.name+' lecture')}`;
+        const webC=`https://www.google.com/search?q=BCA+${encodeURIComponent(s.name+' '+ch.name+' notes pdf')}`;
+        return `<div class="chitem" style="animation-delay:${ci*.03}s">
+          <div class="ch-row">
+            <div class="chico" style="--clr:${s.clr};${isDone?`background:${s.clr};color:#fff`:''}" onclick="toggleDone('${ch.id}','${CUR_SUBJ}')">
+              ${isDone? SVGS.check :`<span style="font-size:14px">${ch.emoji}</span>`}
+            </div>
+            <div style="flex:1">
+              <div class="chname" style="${isDone?'text-decoration:line-through;opacity:.6':''}">${ch.name}</div>
+              <div class="ch-tags">${tgs}${ch.imp?'<span class="tag imp-tag">★ Important</span>':''}</div>
+              <div class="chtopics">${ch.topics}</div>
+            </div>
+            <div class="ch-btns">
+              <div class="cbtn${hasN?' non':''}" onclick="openNoteModal('${ch.id}','${ch.name}','${s.name}')">${SVGS.notebook}</div>
+              <div class="cbtn${isBm?' son':''}" onclick="toggleBm('${ch.id}','${ch.name}','${s.name}','${s.emoji}','${s.clr}')">${SVGS.starFilled}</div>
+            </div>
+          </div>
+          <div class="res-row">
+            <a href="${ytC}" target="_blank" class="rbtn yt">${SVGS.youtube} YouTube</a>
+            <a href="${webC}" target="_blank" class="rbtn web">${SVGS.books} Notes/PDF</a>
+          </div>
+        </div>`;
+      }).join('');
+      html+=`<div class="ucard${isOpen?' open':''}" id="${uid}" style="--clr:${s.clr}">
+        <div class="uhead" onclick="toggleU('${uid}')">
+          <div class="unum">${ui+1}</div>
+          <div class="utitle">${u.name}</div>
+          <i class="uchev">${SVGS.chevronDown}</i>
+        </div>
+        <div class="ubody"><div class="chlist">${chHtml}</div></div>
+      </div>`;
+    });
+    if(!any)html+=`<div class="empty-state"><span class="es-icon">🔍</span><p>No results for "${q}"</p></div>`;
+    html+='</div>';
+  } else {
+    const examLabel=CUR_MODE==='govt'?'SSC GD':'SBI PO';
+    const vis=s.topics.filter(t=>(!fl||t.text.toLowerCase().includes(fl)||t.tag.toLowerCase().includes(fl))&&(!STAR_F||S.bm[t.id]));
+    if(vis.length){
+      html+='<div class="flat-grid">';
+      vis.forEach((t,i)=>{
+        const isDone=!!S.done[t.id];
+        const isBm=!!S.bm[t.id];
+        const hasN=!!S.notes[t.id];
+        const ytU=`https://www.youtube.com/results?search_query=${encodeURIComponent(examLabel+' '+t.text+' class')}`;
+        const webU=`https://www.google.com/search?q=${encodeURIComponent(examLabel+' '+t.text+' notes pdf')}`;
+        html+=`<div class="tile" style="--clr:${s.clr};animation-delay:${i*.02}s">
+          <div class="tile-tr">
+            <div class="cbtn${hasN?' non':''}" onclick="openNoteModal('${t.id}','${t.text}','${s.name}')">${SVGS.notebook}</div>
+            <div class="cbtn${isBm?' son':''}" onclick="toggleBm('${t.id}','${t.text}','${s.name}','${s.emoji}','${s.clr}')">${SVGS.starFilled}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="tile-ico" style="${isDone?`background:${s.clr};color:#fff`:''}" onclick="toggleDone('${t.id}','${CUR_SUBJ}')">
+              ${isDone? SVGS.check :`<span>${t.emoji}</span>`}
+            </div>
+            <div>
+              <div class="tile-text" style="${isDone?'text-decoration:line-through;opacity:.6':''}">${t.text}</div>
+              <div class="tile-tags"><span class="tag">${t.tag}</span>${t.imp?'<span class="tag imp-tag">★</span>':''}</div>
+            </div>
+          </div>
+          <div class="tile-res">
+            <a href="${ytU}" target="_blank" class="rbtn yt" style="font-size:10.5px">${SVGS.youtube} YT</a>
+            <a href="${webU}" target="_blank" class="rbtn web" style="font-size:10.5px">${SVGS.books} Notes</a>
+          </div>
+        </div>`;
+      });
+      html+='</div>';
+    } else {
+      html+=`<div class="empty-state"><span class="es-icon">🔍</span><p>No results for "${q}"</p></div>`;
+    }
+  }
+  document.getElementById('syllContent').innerHTML=html;
+}
+
+function toggleU(id){OPEN_U[id]=!OPEN_U[id];document.getElementById(id)?.classList.toggle('open',OPEN_U[id]);}
+function doSearch(){if(CUR_SUBJ)renderSubject(document.getElementById('syllSearch').value);else renderSubjectList();}
+
+// ══ DONE ══
+function toggleDone(id,subj){
+  S.done[id]?delete S.done[id]:S.done[id]=true;
+  save();
+  if(CUR_SUBJ)renderSubject(document.getElementById('syllSearch').value||'');
+  toast(S.done[id]?'✓ Marked as studied':'Unmarked');
+}
+
+// ══ BOOKMARK ══
+function toggleBm(id,name,subject,emoji,clr){
+  if(S.bm[id]){delete S.bm[id];toast('Removed from saved');}
+  else{S.bm[id]={id,name,subject,emoji,clr,mode:CUR_MODE,subj:CUR_SUBJ};toast('★ Saved!');}
+  save();
+  document.querySelectorAll(`[onclick*="toggleBm('${id}'"]`).forEach(el=>{el.classList.toggle('son',!!S.bm[id]);});
+  document.getElementById('bmCount').textContent=Object.keys(S.bm).length;
+}
+
+// ══ STAR FILTER ══
+function toggleStarFilter(){
+  STAR_F=!STAR_F;
+  document.getElementById('starFilterBtn').classList.toggle('active',STAR_F);
+  document.getElementById('pillStarBtn').classList.toggle('on',STAR_F);
+  if(CUR_PAGE==='syllabus'&&CUR_SUBJ)renderSubject();
+  toast(STAR_F?'Showing saved only':'Showing all topics');
+}
+
+// ══ NOTES ══
+function openNoteModal(id,name,subject){
+  NOTE_TARGET={id,name,subject};
+  document.getElementById('modalTitle').textContent=S.notes[id]?'Edit Note':'Add Note';
+  document.getElementById('modalSub').textContent=subject+' · '+name;
+  document.getElementById('modalTA').value=S.notes[id]||'';
+  document.getElementById('noteModal').classList.add('show');
+  setTimeout(()=>document.getElementById('modalTA').focus(),300);
+}
+function closeNoteModal(){document.getElementById('noteModal').classList.remove('show');NOTE_TARGET=null;}
+function saveModalNote(){
+  if(!NOTE_TARGET)return;
+  const v=document.getElementById('modalTA').value.trim();
+  if(v)S.notes[NOTE_TARGET.id]={text:v,name:NOTE_TARGET.name,subject:NOTE_TARGET.subject,mode:CUR_MODE,subj:CUR_SUBJ||'',ts:Date.now()};
+  else delete S.notes[NOTE_TARGET.id];
+  save();closeNoteModal();
+  if(CUR_PAGE==='syllabus'&&CUR_SUBJ)renderSubject();
+  toast(v?'Note saved ✓':'Note deleted');
+}
+function renderNotes(){
+  const g=document.getElementById('notesList');
+  const entries=Object.values(S.notes).sort((a,b)=>b.ts-a.ts);
+  const search=document.getElementById('notesSearch').value.toLowerCase();
+  const filtered=search?entries.filter(e=>e.text.toLowerCase().includes(search)||e.name.toLowerCase().includes(search)):entries;
+  if(!filtered.length){g.innerHTML='<div class="empty-state"><span class="es-icon">📓</span><p>No notes yet. Add notes while studying!</p></div>';return;}
+  g.innerHTML=filtered.map((n,i)=>`
+    <div class="note-card" style="--nc:${getClr(n)};animation-delay:${i*.04}s">
+      <div class="note-subject">${n.subject}</div>
+      <div class="note-chapter">${n.name}</div>
+      <div class="note-content">${n.text}</div>
+      <div class="note-footer">
+        <div class="note-time">${timeSince(n.ts)}</div>
+        <div class="note-del" onclick="delNote('${Object.keys(S.notes).find(k=>S.notes[k].ts===n.ts)}')">${SVGS.trash}</div>
+      </div>
+    </div>`).join('');
+}
+function getClr(n){
+  try{for(const mk of Object.keys(DB)){const sv=Object.values(DB[mk]).find(s=>s.name===n.subject);if(sv)return sv.clr;}return'#a78bfa';}catch{return'#a78bfa';}
+}
+function delNote(id){delete S.notes[id];save();renderNotes();toast('Note deleted');}
+function filterNotes(){renderNotes();}
+function timeSince(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return'Just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
+
+// ══ BOOKMARKS ══
+function renderBookmarks(){
+  const g=document.getElementById('bmGrid');
+  const items=Object.values(S.bm);
+  if(!items.length){g.innerHTML='<div class="empty-state"><span class="es-icon">⭐</span><p>No saved topics yet</p></div>';return;}
+  g.innerHTML=items.map((b,i)=>`
+    <div class="bm-card" style="--clr:${b.clr};animation-delay:${i*.04}s" onclick="goToBm('${b.mode}','${b.subj}')">
+      <div class="bm-ico" style="background:${b.clr}22;font-size:18px">${b.emoji}</div>
+      <div><div class="bm-name">${b.name}</div><div class="bm-subject">${b.subject}</div></div>
+      <div class="bm-remove" onclick="event.stopPropagation();removeBm('${b.id}')">${SVGS.x}</div>
+    </div>`).join('');
+}
+function removeBm(id){delete S.bm[id];save();renderBookmarks();toast('Removed from saved');}
+function goToBm(mode,subj){setMode(mode);CUR_SUBJ=subj;goToPage('syllabus');}
+
+// ══ PROGRESS ══
+function renderProgress(){
+  const g=document.getElementById('progCards');g.innerHTML='';
+  Object.entries(DB).forEach(([mode,mdata])=>{
+    Object.entries(mdata).forEach(([k,s],i)=>{
+      const items=s.units?s.units.reduce((a,u)=>[...a,...u.chapters],[]):s.topics;
+      const total=items.length;
+      const done=items.filter(t=>S.done[t.id]).length;
+      const pct=Math.round(done/total*100)||0;
+      const d=document.createElement('div');
+      d.className='prog-card';
+      d.style.cssText=`--clr:${s.clr};--grd:${s.grd};animation-delay:${i*.05}s`;
+      const chipsHtml=items.slice(0,8).map(t=>`<div class="prog-ch${S.done[t.id]?' done':''}" onclick="toggleDoneProgress('${t.id}','${k}','${mode}')">${((t.name||t.text).length>16?(t.name||t.text).slice(0,14)+'...':(t.name||t.text))}</div>`).join('');
+      d.innerHTML=`<div class="prog-card-top">
+        <span class="prog-card-ico">${s.emoji}</span>
+        <div class="prog-card-name">${s.name}<span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">${MODE_META[mode].label}</span></div>
+        <div class="prog-pct">${pct}%</div>
+      </div>
+      <div class="prog-track"><div class="prog-fill" style="width:0;background:${s.clr}" id="pf-${mode}-${k}"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${done} / ${total} topics studied</div>
+      <div class="prog-chapters">${chipsHtml}</div>`;
+      g.appendChild(d);
+      setTimeout(()=>{const f=document.getElementById(`pf-${mode}-${k}`);if(f){f.style.transition='width 1s ease';f.style.width=pct+'%';}},100+i*30);
+    });
+  });
+}
+function toggleDoneProgress(id,subj,mode){
+  S.done[id]?delete S.done[id]:S.done[id]=true;
+  save();renderProgress();toast(S.done[id]?'✓ Marked studied':'Unmarked');
+}
+
+// ══ PROFILE ══
+function renderProfile(){
+  const total=Object.values(DB).reduce((a,m)=>a+Object.values(m).reduce((b,s)=>b+(s.units?s.units.reduce((c,u)=>c+u.chapters.length,0):s.topics.length),0),0);
+  const done=Object.keys(S.done).length;
+  const pct=Math.round(done/total*100)||0;
+  const uname=S.name||'Student';
+  document.getElementById('profileAvatar').textContent=uname.charAt(0).toUpperCase();
+  document.getElementById('profileName').textContent=uname;
+  document.getElementById('profileProgress').textContent=`${pct}% overall progress · ${S.streak.days.length} day streak 🔥`;
+  const g=document.getElementById('profileStats');g.innerHTML='';
+  [[done,'Studied'],[Object.keys(S.bm).length,'Saved'],[Object.keys(S.notes).length,'Notes']].forEach(([n,l])=>{
+    const d=document.createElement('div');d.className='pstat';
+    d.innerHTML=`<div class="pstat-n">${n}</div><div class="pstat-l">${l}</div>`;
+    g.appendChild(d);
+  });
+}
+function clearData(){if(confirm('Reset all data? This cannot be undone.')){localStorage.removeItem('nxs_app_v2');S={bm:{},notes:{},done:{},streak:{days:[],last:null},recent:[],name:S.name};save();renderProfile();toast('All data cleared');}}
+
+// ══ SEARCH ══
+function focusSearch(){if(CUR_PAGE==='syllabus')document.getElementById('syllSearch').focus();else if(CUR_PAGE==='notes')document.getElementById('notesSearch').focus();}
+
+// ══ RIPPLE ══
+function rip(el,e,clr){
+  const r=el.getBoundingClientRect();
+  const d=document.createElement('div');d.className='ripple-el';
+  const sz=Math.max(r.width,r.height)*2.5;
+  d.style.cssText=`width:${sz}px;height:${sz}px;left:${e.clientX-r.left-sz/2}px;top:${e.clientY-r.top-sz/2}px;background:${clr};opacity:.15`;
+  el.appendChild(d);setTimeout(()=>d.remove(),700);
+}
+
+// ══ TOAST ══
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ══ CANVAS ══
+function initCanvas(){
+  const c=document.getElementById('nn'),ctx=c.getContext('2d');
+  let W,H,pts=[],mx=null,my=null;
+  const cols=['#a78bfa','#60a5fa','#34d399','#fb923c','#ec4899'];
+  const resize=()=>{W=c.width=window.innerWidth;H=c.height=window.innerHeight;pts=Array.from({length:55},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:Math.random()*1.2+.3,c:cols[Math.floor(Math.random()*5)]}));};
+  resize();window.addEventListener('resize',resize);
+  window.addEventListener('touchstart',e=>{mx=e.touches[0].clientX;my=e.touches[0].clientY;},{passive:true});
+  window.addEventListener('touchmove',e=>{mx=e.touches[0].clientX;my=e.touches[0].clientY;},{passive:true});
+  window.addEventListener('touchend',()=>{mx=null;my=null;},{passive:true});
+  window.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+  const draw=()=>{
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+      if(mx!==null){const dx=p.x-mx,dy=p.y-my,d=Math.hypot(dx,dy);if(d<120&&d>0){const f=(120-d)/120;p.x+=dx/d*f*.9;p.y+=dy/d*f*.9;}}
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.c;ctx.globalAlpha=.3;ctx.fill();});
+    pts.forEach((a,i)=>pts.slice(i+1).forEach(b=>{const d=Math.hypot(a.x-b.x,a.y-b.y);if(d<75){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=a.c;ctx.globalAlpha=(1-d/75)*.07;ctx.lineWidth=.5;ctx.stroke();}}));
+    ctx.globalAlpha=1;requestAnimationFrame(draw);
+  };draw();
+}
+
+// ══ INIT ══
+window.addEventListener('DOMContentLoaded',()=>{
+  setupStaticUI();
+  initCanvas();
+  checkOnboard();
+  if(S.name)renderHome();
+});
+</script>
+</body>
+</html>
